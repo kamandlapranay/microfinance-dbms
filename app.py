@@ -32,7 +32,7 @@ def repay(c, loan_id, amt, day):
         c.execute("UPDATE schedule SET paid=paid+?, status=CASE WHEN paid+?>=due-0.005 THEN 'PAID' ELSE 'PARTIAL' END WHERE schedule_id=?", (p, p, s["schedule_id"]))
 
 def init():
-    c = sqlite3.connect(DB); c.executescript(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
+    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; c.executescript(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
     if c.execute("SELECT COUNT(*) FROM client").fetchone()[0]: return
     random.seed(7)
     c.executemany("INSERT INTO field_officer VALUES(?,?,?)", [(1, "Asha Reddy", "North"), (2, "Ravi Kumar", "South"), (3, "Meena Iyer", "East")])
