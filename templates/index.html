@@ -1,0 +1,25 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Microfinance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>body{font:14px system-ui;margin:0;background:#f4f6f8;color:#1c2733}header{background:#0f4c5c;color:#fff;padding:14px 24px;font-size:18px}main{padding:20px 24px;max-width:1200px;margin:auto}.g{display:grid;gap:14px;margin-bottom:14px}.k{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.c2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}.card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 3px #0002;overflow-x:auto}.card b{display:block;font-size:22px;margin-top:4px}h3{margin:0 0 8px}table{width:100%;border-collapse:collapse}td,th{padding:6px;border-bottom:1px solid #eee;text-align:left}input,select,button{padding:7px;margin:3px 3px 3px 0}button{background:#0f4c5c;color:#fff;border:0;border-radius:6px;cursor:pointer}.m{margin-top:6px;font-weight:600}</style>
+<header>Microfinance Loan &amp; Repayment Dashboard</header><main>
+<div class="g k" id=k></div>
+<div class="g c2"><div class=card><h3>Monthly collections</h3><canvas id=c1></canvas></div><div class=card><h3>Overdue installments by risk</h3><canvas id=c2></canvas></div></div>
+<div class="g c2">
+<div class=card><h3>New loan (trigger-checked)</h3><form id=lf><input id=lc type=number placeholder="Client ID" required><select id=lp><option value=1>Micro Starter (max 10,000)</option><option value=2>Group Growth (max 25,000)</option></select><input id=la type=number placeholder="Amount" required><button>Disburse</button></form><div class=m id=lm></div></div>
+<div class=card><h3>Post repayment</h3><form id=rf><input id=rl type=number placeholder="Loan ID" required><input id=ra type=number step=0.01 placeholder="Amount" required><button>Post</button></form><div class=m id=rm></div></div></div>
+<div class="g c2"><div class=card><h3>Overdue loans (PAR view)</h3><table><tr><th>Loan<th>Client<th>Group<th>Days<th>Amount<th>Risk<tbody id=od></tbody></table></div>
+<div class=card><h3>Officer portfolio</h3><table><tr><th>Officer<th>Groups<th>Loans<th>Portfolio<th>Outstanding<tbody id=of></tbody></table></div></div></main>
+<script>
+const $=i=>document.getElementById(i),f=n=>'₹'+Math.round(n).toLocaleString('en-IN'),j=(u,o)=>fetch(u,o).then(r=>r.json());let ch={};
+function chart(id,type,l,d,t){ch[id]&&ch[id].destroy();ch[id]=new Chart($(id),{type,data:{labels:l,datasets:[{label:t,data:d,backgroundColor:'#2a9d8f',borderColor:'#0f4c5c'}]}})}
+const rows=(t,a,k)=>$(t).innerHTML=a.map(r=>'<tr>'+k.map(x=>`<td>${r[x]}</td>`).join('')+'</tr>').join('');
+async function load(){const s=await j('/api/summary');
+$('k').innerHTML=[['Active loans',s.active],['Outstanding',f(s.outstanding)],['Collected',f(s.collected)],['Overdue',f(s.overdue)],['PAR 30',s.par30+'%']].map(([a,b])=>`<div class=card>${a}<b>${b}</b></div>`).join('');
+const c=await j('/api/collections');chart('c1','line',c.map(x=>x.m),c.map(x=>x.t),'Collections');
+const o=await j('/api/overdue'),n={};o.forEach(x=>n[x.risk]=(n[x.risk]||0)+1);chart('c2','bar',Object.keys(n),Object.values(n),'Installments');
+rows('od',o.slice(0,12),['loan_id','client','group_name','days','overdue_amount','risk']);rows('of',await j('/api/officers'),['officer_name','n_groups','loans','portfolio','outstanding'])}
+async function post(u,b,m){const r=await j(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});$(m).textContent=r.error?'❌ '+r.error:'✅ '+r.message;$(m).style.color=r.error?'#c0392b':'#1e8449';load()}
+$('lf').onsubmit=e=>{e.preventDefault();post('/api/loans',{client_id:+$('lc').value,product_id:+$('lp').value,amount:+$('la').value},'lm')};
+$('rf').onsubmit=e=>{e.preventDefault();post('/api/repay',{loan_id:+$('rl').value,amount:+$('ra').value},'rm')};
+load();
+</script>
